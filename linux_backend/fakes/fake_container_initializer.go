@@ -19,13 +19,13 @@ type FakeContainerInitializer struct {
 	MountProcStub        func() error
 	mountProcMutex       sync.RWMutex
 	mountProcArgsForCall []struct{}
-	mountProcReturns     struct {
+	mountProcReturns struct {
 		result1 error
 	}
 	MountTmpStub        func() error
 	mountTmpMutex       sync.RWMutex
 	mountTmpArgsForCall []struct{}
-	mountTmpReturns     struct {
+	mountTmpReturns struct {
 		result1 error
 	}
 }

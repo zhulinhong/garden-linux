@@ -32,6 +32,7 @@ import (
 	"github.com/cloudfoundry-incubator/garden-linux/old/port_pool/fake_port_pool"
 	"github.com/cloudfoundry-incubator/garden-linux/old/quota_manager/fake_quota_manager"
 	"github.com/cloudfoundry-incubator/garden-linux/old/rootfs_provider"
+	"github.com/cloudfoundry-incubator/garden-linux/old/rootfs_provider/fake_namespacer"
 	"github.com/cloudfoundry-incubator/garden-linux/old/rootfs_provider/fake_rootfs_provider"
 	"github.com/cloudfoundry-incubator/garden-linux/old/sysconfig"
 	"github.com/cloudfoundry-incubator/garden-linux/old/uid_pool/fake_uid_pool"
@@ -51,6 +52,7 @@ var _ = Describe("Container pool", func() {
 	var fakePortPool *fake_port_pool.FakePortPool
 	var defaultFakeRootFSProvider *fake_rootfs_provider.FakeRootFSProvider
 	var fakeRootFSProvider *fake_rootfs_provider.FakeRootFSProvider
+	var fakeRootFSNamespacer *fake_namespacer.FakeNamespacer
 	var fakeBridges *fake_bridge_manager.FakeBridgeManager
 	var fakeFilterProvider *fake_container_pool.FakeFilterProvider
 	var fakeFilter *fakes.FakeFilter
@@ -86,6 +88,7 @@ var _ = Describe("Container pool", func() {
 		fakePortPool = fake_port_pool.New(1000)
 		defaultFakeRootFSProvider = new(fake_rootfs_provider.FakeRootFSProvider)
 		fakeRootFSProvider = new(fake_rootfs_provider.FakeRootFSProvider)
+		fakeRootFSNamespacer = new(fake_namespacer.FakeNamespacer)
 
 		defaultFakeRootFSProvider.ProvideRootFSReturns("/provided/rootfs/path", nil, nil)
 
@@ -103,6 +106,7 @@ var _ = Describe("Container pool", func() {
 				"":     defaultFakeRootFSProvider,
 				"fake": fakeRootFSProvider,
 			},
+			fakeRootFSNamespacer,
 			fakeUIDPool,
 			net.ParseIP("1.2.3.4"),
 			345,
@@ -368,6 +372,13 @@ var _ = Describe("Container pool", func() {
 						},
 					},
 				))
+			})
+
+			It("translates uids in the rootfs", func() {
+				_, err := pool.Create(garden.ContainerSpec{Privileged: true})
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(fakeRootFSNamespacer.NamespaceCallCount()).To(Equal(1))
 			})
 		})
 

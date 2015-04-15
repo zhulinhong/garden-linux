@@ -62,7 +62,8 @@ type LinuxContainerPool struct {
 	denyNetworks  []string
 	allowNetworks []string
 
-	rootfsProviders map[string]rootfs_provider.RootFSProvider
+	rootfsProviders  map[string]rootfs_provider.RootFSProvider
+	rootfsNamespacer rootfs_provider.Namespacer
 
 	uidPool    uid_pool.UIDPool
 	subnetPool SubnetPool
@@ -89,6 +90,7 @@ func New(
 	binPath, depotPath string,
 	sysconfig sysconfig.Config,
 	rootfsProviders map[string]rootfs_provider.RootFSProvider,
+	rootfsNamespacer rootfs_provider.Namespacer,
 	uidPool uid_pool.UIDPool,
 	externalIP net.IP,
 	mtu int,
@@ -109,7 +111,8 @@ func New(
 
 		sysconfig: sysconfig,
 
-		rootfsProviders: rootfsProviders,
+		rootfsProviders:  rootfsProviders,
+		rootfsNamespacer: rootfsNamespacer,
 
 		allowNetworks: allowNetworks,
 		denyNetworks:  denyNetworks,
@@ -571,6 +574,8 @@ func (p *LinuxContainerPool) acquireSystemResources(id, handle, containerPath, r
 		pLog.Error("provide-rootfs-failed", err)
 		return nil, err
 	}
+
+	p.rootfsNamespacer.Namespace(rootfsPath)
 
 	if resources.Bridge, err = p.bridges.Reserve(resources.Network.Subnet, id); err != nil {
 		pLog.Error("reserve-bridge-failed", err, lager.Data{

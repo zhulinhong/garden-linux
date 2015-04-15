@@ -345,6 +345,21 @@ var _ = Describe("Creating a container", func() {
 
 						Expect(process.Wait()).To(Equal(0))
 					})
+
+					FIt("sees root-owned files in the rootfs as owned by the container's root user", func() {
+						stdout := gbytes.NewBuffer()
+						process, err := container.Run(garden.ProcessSpec{
+							User: "root",
+							Path: "sh",
+							Args: []string{"-c", `ls -l /sbin | grep -v wsh`},
+						}, garden.ProcessIO{Stdout: stdout})
+						Expect(err).ToNot(HaveOccurred())
+
+						Expect(process.Wait()).To(Equal(0))
+						Expect(stdout).NotTo(gbytes.Say("nobody"))
+						Expect(stdout).NotTo(gbytes.Say("65534"))
+						Expect(stdout).To(gbytes.Say("root"))
+					})
 				})
 
 				Context("when the 'privileged' flag is set on the create call", func() {

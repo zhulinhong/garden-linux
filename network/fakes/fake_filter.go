@@ -20,9 +20,9 @@ type FakeFilter struct {
 	TearDownStub        func()
 	tearDownMutex       sync.RWMutex
 	tearDownArgsForCall []struct{}
-	NetOutStub          func(garden.NetOutRule) error
-	netOutMutex         sync.RWMutex
-	netOutArgsForCall   []struct {
+	NetOutStub        func(garden.NetOutRule) error
+	netOutMutex       sync.RWMutex
+	netOutArgsForCall []struct {
 		arg1 garden.NetOutRule
 	}
 	netOutReturns struct {

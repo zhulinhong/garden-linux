@@ -738,6 +738,7 @@ int child_run(void *data) {
   int rv;
   char pivoted_lib_path[PATH_MAX];
   size_t pivoted_lib_path_len;
+  int old_root;
 
   /* Wait for parent */
   rv = barrier_wait(&w->barrier_parent);
@@ -761,21 +762,39 @@ int child_run(void *data) {
   }
 
   /* Ensure /tmp is world-writable as part of container contract */
-  rv = chmod("tmp", 01777);
+  /* rv = chmod("tmp", 01777); */
+  /* if (rv == -1) { */
+  /*   perror("chmodd"); */
+  /*   abort(); */
+  /* } */
+
+  /* rv = mkdir("tmp/garden-host", 0700); */
+  /* if (rv == -1 && errno != EEXIST) { */
+  /*   perror("mkdir"); */
+  /*   abort(); */
+  /* } */
+
+  old_root = open("/", O_DIRECTORY | O_RDONLY);
   if (rv == -1) {
-    perror("chmod");
+    perror("open old root");
     abort();
   }
 
-  rv = mkdir("tmp/garden-host", 0700);
-  if (rv == -1 && errno != EEXIST) {
-    perror("mkdir");
-    abort();
-  }
-
-  rv = pivot_root(".", "tmp/garden-host");
+  rv = pivot_root(".", ".");
   if (rv == -1) {
     perror("pivot_root");
+    abort();
+  }
+
+  rv = fchdir(old_root);
+  if (rv == -1) {
+    perror("fchdir");
+    abort();
+  }
+
+  rv = umount2(".", MNT_DETACH);
+  if (rv == -1) {
+    perror("umount2");
     abort();
   }
 
@@ -785,16 +804,16 @@ int child_run(void *data) {
     abort();
   }
 
-  rv = symlink("/dev/pts/ptmx", "/dev/ptmx");
-  if (rv == -1 || errno == EEXIST) {
-    rv = unlink("/dev/ptmx");
-    if (rv == -1) {
-      perror("unlink");
-      abort();
-    }
+  /* rv = symlink("/dev/pts/ptmx", "/dev/ptmx"); */
+  /* if (rv == -1 || errno == EEXIST) { */
+  /*   rv = unlink("/dev/ptmx"); */
+  /*   if (rv == -1) { */
+  /*     perror("unlink /dev/ptmx"); */
+  /*     abort(); */
+  /*   } */
 
-    rv = symlink("/dev/pts/ptmx", "/dev/ptmx");
-  }
+  /*   rv = symlink("/dev/pts/ptmx", "/dev/ptmx"); */
+  /* } */
 
   rv = setuid(0);
   if (rv == -1) {
@@ -808,7 +827,7 @@ int child_run(void *data) {
     abort();
   }
 
-  rv = hook(pivoted_lib_path, "child-after-pivot");
+  rv = hook("/sbin", "child-after-pivot");
   if(rv != 0) {
     perror("hook-child-after-pivot");
     abort();
@@ -833,13 +852,6 @@ int child_continue(int argc, char **argv) {
 
   if (strlen(w->title) > 0) {
     setproctitle(argv, w->title);
-  }
-
-  /* Clean up temporary pivot_root dir */
-  rv = umount2("/tmp/garden-host", MNT_DETACH);
-  if (rv == -1) {
-    perror("unmount2");
-    exit(1);
   }
 
   /* Detach this process from its original group */

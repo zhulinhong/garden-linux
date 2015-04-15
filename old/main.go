@@ -300,6 +300,11 @@ func Main() {
 		"docker": dockerRootFSProvider,
 	}
 
+	rootFSNamespacer := rootfs_provider.NewNamespacer(
+		rootfs_provider.NewUidTranslator(
+			rootfs_provider.DefaultUIDMap,
+			rootfs_provider.DefaultGIDMap).Translate)
+
 	filterProvider := &provider{
 		useKernelLogging: useKernelLogging,
 		chainPrefix:      config.IPTables.Filter.InstancePrefix,
@@ -327,6 +332,7 @@ func Main() {
 		*depotPath,
 		config,
 		rootFSProviders,
+		rootFSNamespacer,
 		uidPool,
 		parsedExternalIP,
 		*mtu,

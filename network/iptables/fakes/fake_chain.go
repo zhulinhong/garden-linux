@@ -21,7 +21,7 @@ type FakeChain struct {
 	TearDownStub        func() error
 	tearDownMutex       sync.RWMutex
 	tearDownArgsForCall []struct{}
-	tearDownReturns     struct {
+	tearDownReturns struct {
 		result1 error
 	}
 	AppendRuleStub        func(source string, destination string, jump iptables.Action) error

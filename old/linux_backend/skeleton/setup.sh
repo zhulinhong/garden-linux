@@ -53,11 +53,13 @@ EOS
 
 if [ ! -d $rootfs_path/proc ]; then
   mkdir -p $rootfs_path/proc
+  chown $root_uid:$root_uid $rootfs_path/proc
   chmod 0755 $rootfs_path/proc
 fi
 
 if [ ! -d $rootfs_path/dev ]; then
   mkdir -p $rootfs_path/dev
+  chown $root_uid:$root_uid $rootfs_path/dev
   chmod 0755 $rootfs_path/dev
 fi
 
@@ -66,6 +68,7 @@ rm -rf $rootfs_path/dev/*
 
 if [ ! -d $rootfs_path/dev/shm ]; then
   mkdir $rootfs_path/dev/shm
+  chown $root_uid:$root_uid $rootfs_path/dev/shm
   chmod 1777 $rootfs_path/dev/shm
 fi
 
