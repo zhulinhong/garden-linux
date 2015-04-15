@@ -20,7 +20,7 @@ func NewUidTranslator(uidMappings Mapper, gidMappings Mapper) *UidTranslator {
 		gidMappings: gidMappings,
 
 		getuidgid: getuidgid,
-		chown:     os.Chown,
+		chown:     os.Lchown,
 	}
 }
 

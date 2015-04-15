@@ -2,7 +2,7 @@
 
 ARGS=$@
 if grep -q integration <(echo "$ARGS"); then
-  scripts/remote-fly -nodes 1 $ARGS
+  scripts/test-in-docker -nodes=1 $ARGS
 else
   ginkgo -r -race $ARGS
 fi

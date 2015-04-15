@@ -2,7 +2,7 @@ package rootfs_provider
 
 var DefaultUIDMap MappingList = MappingList{{
 	FromID: 0,
-	ToID:   10000,
+	ToID:   10001,
 	Size:   10000,
 }}
 
