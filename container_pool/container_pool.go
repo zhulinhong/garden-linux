@@ -517,20 +517,18 @@ func (p *LinuxContainerPool) acquirePoolResources(spec garden.ContainerSpec, id 
 }
 
 func (p *LinuxContainerPool) acquireUID(resources *linux_backend.Resources, privileged bool) error {
+	if !privileged {
+		resources.UserUID = 10000 //TODO: these should not be hard coded
+		resources.RootUID = 10001
+		return nil
+	}
+
 	var err error
+	resources.RootUID = 0
 	resources.UserUID, err = p.uidPool.Acquire()
 	if err != nil {
 		p.logger.Error("uid-acquire-failed", err)
 		return err
-	}
-
-	resources.RootUID = 0
-	if !privileged {
-		resources.RootUID, err = p.uidPool.Acquire()
-		if err != nil {
-			p.logger.Error("uid-acquire-failed", err)
-			return err
-		}
 	}
 
 	return nil

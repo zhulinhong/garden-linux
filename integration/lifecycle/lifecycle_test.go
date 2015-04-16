@@ -357,7 +357,13 @@ var _ = Describe("Creating a container", func() {
 						Expect(process.Wait()).To(Equal(0))
 					})
 
-					FIt("sees root-owned files in the rootfs as owned by the container's root user", func() {
+					PIt("ownerships are preserved in a privileged container", func() {
+
+					})
+
+					PMeasure("it does not add significant time to container startup after the first container", func() {})
+
+					It("sees root-owned files in the rootfs as owned by the container's root user", func() {
 						stdout := gbytes.NewBuffer()
 						process, err := container.Run(garden.ProcessSpec{
 							User: "root",
@@ -372,7 +378,6 @@ var _ = Describe("Creating a container", func() {
 						Expect(stdout).To(gbytes.Say("root"))
 					})
 
-					PMeasure("it does not add significant time to container startup after the first container", func() {})
 				})
 
 				Context("when the 'privileged' flag is set on the create call", func() {

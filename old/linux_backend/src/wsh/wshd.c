@@ -768,35 +768,35 @@ int child_run(void *data) {
   /*   abort(); */
   /* } */
 
-  /* rv = mkdir("tmp/garden-host", 0700); */
-  /* if (rv == -1 && errno != EEXIST) { */
-  /*   perror("mkdir"); */
-  /*   abort(); */
-  /* } */
-
-  old_root = open("/", O_DIRECTORY | O_RDONLY);
-  if (rv == -1) {
-    perror("open old root");
+  rv = mkdir("tmp/garden-host", 0700);
+  if (rv == -1 && errno != EEXIST) {
+    perror("mkdir");
     abort();
   }
 
-  rv = pivot_root(".", ".");
+  /* old_root = open("/", O_DIRECTORY | O_RDONLY); */
+  /* if (rv == -1) { */
+  /*   perror("open old root"); */
+  /*   abort(); */
+  /* } */
+
+  rv = pivot_root(".", "tmp/garden-host");
   if (rv == -1) {
     perror("pivot_root");
     abort();
   }
 
-  rv = fchdir(old_root);
-  if (rv == -1) {
-    perror("fchdir");
-    abort();
-  }
+  /* rv = fchdir(old_root); */
+  /* if (rv == -1) { */
+  /*   perror("fchdir"); */
+  /*   abort(); */
+  /* } */
 
-  rv = umount2(".", MNT_DETACH);
-  if (rv == -1) {
-    perror("umount2");
-    abort();
-  }
+  /* rv = umount2(".", MNT_DETACH); */
+  /* if (rv == -1) { */
+  /*   perror("umount2"); */
+  /*   abort(); */
+  /* } */
 
   rv = chdir("/");
   if (rv == -1) {
@@ -804,16 +804,16 @@ int child_run(void *data) {
     abort();
   }
 
-  /* rv = symlink("/dev/pts/ptmx", "/dev/ptmx"); */
-  /* if (rv == -1 || errno == EEXIST) { */
-  /*   rv = unlink("/dev/ptmx"); */
-  /*   if (rv == -1) { */
-  /*     perror("unlink /dev/ptmx"); */
-  /*     abort(); */
-  /*   } */
+  rv = symlink("/dev/pts/ptmx", "/dev/ptmx");
+  if (rv == -1 || errno == EEXIST) {
+    rv = unlink("/dev/ptmx");
+    if (rv == -1) {
+      perror("unlink /dev/ptmx");
+      abort();
+    }
 
-  /*   rv = symlink("/dev/pts/ptmx", "/dev/ptmx"); */
-  /* } */
+    rv = symlink("/dev/pts/ptmx", "/dev/ptmx");
+  }
 
   rv = setuid(0);
   if (rv == -1) {
@@ -824,6 +824,12 @@ int child_run(void *data) {
   rv = setgid(0);
   if (rv == -1) {
     perror("setgid");
+    abort();
+  }
+
+  rv = mount("proc", "/proc", "proc", 0, NULL);
+  if (rv == -1) {
+    perror("mount proc");
     abort();
   }
 

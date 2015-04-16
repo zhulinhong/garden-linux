@@ -347,6 +347,36 @@ var _ = Describe("Container pool", func() {
 			itDeletesTheContainerDirectory()
 		})
 
+		Context("in an unprivileged container", func() {
+			It("always executes create.sh with a root_uid of 10001", func() {
+				for i := 0; i < 2; i++ {
+					container, err := pool.Create(garden.ContainerSpec{Privileged: false})
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(fakeRunner).To(HaveExecutedSerially(
+						fake_command_runner.CommandSpec{
+							Path: "/root/path/create.sh",
+							Args: []string{path.Join(depotPath, container.ID())},
+							Env: []string{
+								"PATH=" + os.Getenv("PATH"),
+								"bridge_iface=bridge-for-10.2.0.0/30-" + container.ID(),
+								"container_iface_mtu=345",
+								"external_ip=1.2.3.4",
+								"id=" + container.ID(),
+								"network_cidr=10.2.0.0/30",
+								"network_cidr_suffix=30",
+								"network_container_ip=10.2.0.1",
+								"network_host_ip=10.2.0.2",
+								"root_uid=10001",
+								"rootfs_path=/provided/rootfs/path",
+								"user_uid=10000",
+							},
+						},
+					))
+				}
+			})
+		})
+
 		Context("when the privileged flag is specified and true", func() {
 			It("executes create.sh with a root_uid of 0", func() {
 				container, err := pool.Create(garden.ContainerSpec{Privileged: true})

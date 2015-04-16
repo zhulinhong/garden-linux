@@ -57,6 +57,8 @@ if [ ! -d $rootfs_path/proc ]; then
   chmod 0755 $rootfs_path/proc
 fi
 
+#chown $root:0 $rootfs_path/proc
+
 if [ ! -d $rootfs_path/dev ]; then
   mkdir -p $rootfs_path/dev
   chown $root_uid:$root_uid $rootfs_path/dev

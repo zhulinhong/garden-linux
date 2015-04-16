@@ -2,6 +2,7 @@ package linux_backend
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 
 	"github.com/cloudfoundry-incubator/garden-linux/hook"
@@ -30,13 +31,13 @@ func RegisterHooks(hs hook.HookSet, runner Runner, config process.Env, container
 
 	hs.Register(hook.CHILD_AFTER_PIVOT, func() {
 		must(container.SetHostname(config["id"]))
-		//must(container.MountProc())
-		// must(container.MountTmp())
+		must(container.MountProc())
+		must(container.MountTmp())
 
-		// // Temporary until /etc/seed functionality removed
-		// if _, err := os.Stat("/etc/seed"); err == nil {
-		// 	must(exec.Command("/bin/sh", "-c", ". /etc/seed").Run())
-		// }
+		// Temporary until /etc/seed functionality removed
+		if _, err := os.Stat("/etc/seed"); err == nil {
+			must(exec.Command("/bin/sh", "-c", ". /etc/seed").Run())
+		}
 	})
 }
 

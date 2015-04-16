@@ -17,9 +17,9 @@ func (*containerInitializer) SetHostname(hostname string) error {
 
 // Pre-condition: /proc must exist.
 func (*containerInitializer) MountProc() error {
-	if err := syscall.Mount("proc", "/proc", "proc", uintptr(0), ""); err != nil {
-		return fmt.Errorf("linux_backend: MountProc: %s", err)
-	}
+	// if err := syscall.Mount("proc", "/proc", "proc", uintptr(0), ""); err != nil {
+	// 	return fmt.Errorf("linux_backend: MountProc: %s", err)
+	//}
 	return nil
 }
 
