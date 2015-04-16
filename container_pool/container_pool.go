@@ -31,7 +31,6 @@ import (
 	"github.com/cloudfoundry-incubator/garden-linux/old/quota_manager"
 	"github.com/cloudfoundry-incubator/garden-linux/old/rootfs_provider"
 	"github.com/cloudfoundry-incubator/garden-linux/old/sysconfig"
-	"github.com/cloudfoundry-incubator/garden-linux/old/uid_pool"
 	"github.com/cloudfoundry-incubator/garden-linux/process"
 	"github.com/cloudfoundry-incubator/garden-linux/process_tracker"
 )
@@ -65,7 +64,6 @@ type LinuxContainerPool struct {
 	rootfsProviders  map[string]rootfs_provider.RootFSProvider
 	rootfsNamespacer rootfs_provider.Namespacer
 
-	uidPool    uid_pool.UIDPool
 	subnetPool SubnetPool
 
 	externalIP net.IP
@@ -91,7 +89,6 @@ func New(
 	sysconfig sysconfig.Config,
 	rootfsProviders map[string]rootfs_provider.RootFSProvider,
 	rootfsNamespacer rootfs_provider.Namespacer,
-	uidPool uid_pool.UIDPool,
 	externalIP net.IP,
 	mtu int,
 	subnetPool SubnetPool,
@@ -116,8 +113,6 @@ func New(
 
 		allowNetworks: allowNetworks,
 		denyNetworks:  denyNetworks,
-
-		uidPool: uidPool,
 
 		externalIP: externalIP,
 		mtu:        mtu,
@@ -144,12 +139,7 @@ func New(
 }
 
 func (p *LinuxContainerPool) MaxContainers() int {
-	maxNet := p.subnetPool.Capacity()
-	maxUid := p.uidPool.InitialSize()
-	if maxNet < maxUid {
-		return maxNet
-	}
-	return maxUid
+	return p.subnetPool.Capacity()
 }
 
 func (p *LinuxContainerPool) Setup() error {
@@ -289,16 +279,6 @@ func (p *LinuxContainerPool) Create(spec garden.ContainerSpec) (c linux_backend.
 	), nil
 }
 
-func (p *LinuxContainerPool) releaseUIDs(userUID, rootUID uint32) {
-	if userUID != 0 {
-		p.uidPool.Release(userUID)
-	}
-
-	if rootUID != 0 {
-		p.uidPool.Release(rootUID)
-	}
-}
-
 func (p *LinuxContainerPool) Restore(snapshot io.Reader) (linux_backend.Container, error) {
 	var containerSnapshot linux_container.ContainerSnapshot
 
@@ -317,25 +297,11 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (linux_backend.Containe
 
 	resources := containerSnapshot.Resources
 
-	err = p.uidPool.Remove(resources.UserUID)
-	if err != nil {
-		return nil, err
-	}
-
-	if resources.RootUID != 0 {
-		err = p.uidPool.Remove(resources.RootUID)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if err = p.subnetPool.Remove(resources.Network); err != nil {
-		p.releaseUIDs(resources.UserUID, resources.RootUID)
 		return nil, err
 	}
 
 	if err = p.bridges.Rereserve(resources.Bridge, resources.Network.Subnet, id); err != nil {
-		p.releaseUIDs(resources.UserUID, resources.RootUID)
 		p.subnetPool.Release(resources.Network)
 		return nil, err
 	}
@@ -343,7 +309,6 @@ func (p *LinuxContainerPool) Restore(snapshot io.Reader) (linux_backend.Containe
 	for _, port := range resources.Ports {
 		err = p.portPool.Remove(port)
 		if err != nil {
-			p.releaseUIDs(resources.UserUID, resources.RootUID)
 			p.subnetPool.Release(resources.Network)
 
 			for _, port := range resources.Ports {
@@ -518,19 +483,13 @@ func (p *LinuxContainerPool) acquirePoolResources(spec garden.ContainerSpec, id 
 
 func (p *LinuxContainerPool) acquireUID(resources *linux_backend.Resources, privileged bool) error {
 	if !privileged {
-		resources.UserUID = 10000 //TODO: these should not be hard coded
-		resources.RootUID = 10001
+		resources.UserUID = 101000 + 600000 //TODO: these should not be hard coded
+		resources.RootUID = 600000
 		return nil
 	}
 
-	var err error
 	resources.RootUID = 0
-	resources.UserUID, err = p.uidPool.Acquire()
-	if err != nil {
-		p.logger.Error("uid-acquire-failed", err)
-		return err
-	}
-
+	resources.UserUID = 10001
 	return nil
 }
 
@@ -538,8 +497,6 @@ func (p *LinuxContainerPool) releasePoolResources(resources *linux_backend.Resou
 	for _, port := range resources.Ports {
 		p.portPool.Release(port)
 	}
-
-	p.releaseUIDs(resources.UserUID, resources.RootUID)
 
 	if resources.Network != nil {
 		p.subnetPool.Release(resources.Network)

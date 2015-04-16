@@ -905,12 +905,12 @@ var _ = Describe("Creating a container", func() {
 			})
 
 			It("creates the files in the container, as the vcap user", func() {
-				err := container.StreamIn("/tmp/some/container/dir", tarStream)
+				err := container.StreamIn("/home/vcap", tarStream)
 				Expect(err).ToNot(HaveOccurred())
 
 				process, err := container.Run(garden.ProcessSpec{
 					Path: "test",
-					Args: []string{"-f", "/tmp/some/container/dir/some-temp-dir/some-temp-file"},
+					Args: []string{"-f", "/home/vcap/some-temp-dir/some-temp-file"},
 				}, garden.ProcessIO{})
 				Expect(err).ToNot(HaveOccurred())
 
@@ -919,7 +919,7 @@ var _ = Describe("Creating a container", func() {
 				output := gbytes.NewBuffer()
 				process, err = container.Run(garden.ProcessSpec{
 					Path: "ls",
-					Args: []string{"-al", "/tmp/some/container/dir/some-temp-dir/some-temp-file"},
+					Args: []string{"-al", "/home/vcap/some-temp-dir/some-temp-file"},
 				}, garden.ProcessIO{
 					Stdout: output,
 				})
@@ -931,6 +931,8 @@ var _ = Describe("Creating a container", func() {
 				Expect(output).To(gbytes.Say("vcap"))
 				Expect(output).To(gbytes.Say("vcap"))
 			})
+
+			PIt("can create files in /tmp")
 
 			Context("in a privileged container", func() {
 				BeforeEach(func() {

@@ -35,7 +35,6 @@ import (
 	"github.com/cloudfoundry-incubator/garden-linux/old/rootfs_provider/fake_namespacer"
 	"github.com/cloudfoundry-incubator/garden-linux/old/rootfs_provider/fake_rootfs_provider"
 	"github.com/cloudfoundry-incubator/garden-linux/old/sysconfig"
-	"github.com/cloudfoundry-incubator/garden-linux/old/uid_pool/fake_uid_pool"
 	"github.com/cloudfoundry-incubator/garden-linux/process"
 
 	"github.com/cloudfoundry-incubator/garden"
@@ -46,7 +45,6 @@ import (
 var _ = Describe("Container pool", func() {
 	var depotPath string
 	var fakeRunner *fake_command_runner.FakeCommandRunner
-	var fakeUIDPool *fake_uid_pool.FakeUIDPool
 	var fakeSubnetPool *fake_subnet_pool.FakeSubnetPool
 	var fakeQuotaManager *fake_quota_manager.FakeQuotaManager
 	var fakePortPool *fake_port_pool.FakePortPool
@@ -62,7 +60,6 @@ var _ = Describe("Container pool", func() {
 	var containerNetwork *linux_backend.Network
 
 	BeforeEach(func() {
-		fakeUIDPool = fake_uid_pool.New(10000)
 		fakeSubnetPool = new(fake_subnet_pool.FakeSubnetPool)
 
 		var err error
@@ -107,7 +104,6 @@ var _ = Describe("Container pool", func() {
 				"fake": fakeRootFSProvider,
 			},
 			fakeRootFSNamespacer,
-			fakeUIDPool,
 			net.ParseIP("1.2.3.4"),
 			345,
 			fakeSubnetPool,
@@ -130,21 +126,10 @@ var _ = Describe("Container pool", func() {
 		Context("when constrained by network pool size", func() {
 			BeforeEach(func() {
 				fakeSubnetPool.CapacityReturns(5)
-				fakeUIDPool.InitialPoolSize = 3000
 			})
 
 			It("returns the network pool size", func() {
 				Expect(pool.MaxContainers()).To(Equal(5))
-			})
-		})
-		Context("when constrained by uid pool size", func() {
-			BeforeEach(func() {
-				fakeSubnetPool.CapacityReturns(666)
-				fakeUIDPool.InitialPoolSize = 42
-			})
-
-			It("returns the uid pool size", func() {
-				Expect(pool.MaxContainers()).To(Equal(42))
 			})
 		})
 	})
@@ -239,12 +224,6 @@ var _ = Describe("Container pool", func() {
 	})
 
 	Describe("creating", func() {
-		itReleasesTheUserIDs := func() {
-			It("returns the container's user ID and root ID to the pool", func() {
-				Expect(fakeUIDPool.Released).To(Equal([]uint32{10000, 10001}))
-			})
-		}
-
 		itReleasesTheIPBlock := func() {
 			It("returns the container's IP block to the pool", func() {
 				Expect(fakeSubnetPool.ReleaseCallCount()).To(Equal(1))
@@ -341,7 +320,6 @@ var _ = Describe("Container pool", func() {
 				Expect(err).To(MatchError("container_pool: set up filter: iptables says no"))
 			})
 
-			itReleasesTheUserIDs()
 			itReleasesTheIPBlock()
 			itCleansUpTheRootfs()
 			itDeletesTheContainerDirectory()
@@ -560,7 +538,6 @@ var _ = Describe("Container pool", func() {
 						})
 
 						It("does not acquire any resources", func() {
-							Expect(fakeUIDPool.Acquired).To(HaveLen(0))
 							Expect(fakePortPool.Acquired).To(HaveLen(0))
 							Expect(fakeSubnetPool.AcquireCallCount()).To(Equal(0))
 						})
@@ -583,8 +560,6 @@ var _ = Describe("Container pool", func() {
 				It("returns the error", func() {
 					Expect(err).To(Equal(allocateError))
 				})
-
-				itReleasesTheUserIDs()
 
 				It("does not execute create.sh", func() {
 					Expect(fakeRunner).ToNot(HaveExecutedSerially(
@@ -722,7 +697,6 @@ var _ = Describe("Container pool", func() {
 					Expect(err).To(BeAssignableToTypeOf(&url.Error{}))
 				})
 
-				itReleasesTheUserIDs()
 				itReleasesTheIPBlock()
 
 				It("does not acquire a bridge", func() {
@@ -743,7 +717,6 @@ var _ = Describe("Container pool", func() {
 					Expect(err).To(Equal(container_pool.ErrUnknownRootFSProvider))
 				})
 
-				itReleasesTheUserIDs()
 				itReleasesTheIPBlock()
 
 				It("does not acquire a bridge", func() {
@@ -767,7 +740,6 @@ var _ = Describe("Container pool", func() {
 					Expect(err).To(Equal(providerErr))
 				})
 
-				itReleasesTheUserIDs()
 				itReleasesTheIPBlock()
 
 				It("does not acquire a bridge", func() {
@@ -962,23 +934,9 @@ var _ = Describe("Container pool", func() {
 					Expect(err).To(Equal(disaster))
 				})
 
-				itReleasesTheUserIDs()
 				itReleasesTheIPBlock()
 				itCleansUpTheRootfs()
 				itDeletesTheContainerDirectory()
-			})
-		})
-
-		Context("when acquiring a UID fails", func() {
-			nastyError := errors.New("oh no!")
-
-			JustBeforeEach(func() {
-				fakeUIDPool.AcquireError = nastyError
-			})
-
-			It("returns the error", func() {
-				_, err := pool.Create(garden.ContainerSpec{})
-				Expect(err).To(Equal(nastyError))
 			})
 		})
 
@@ -1001,13 +959,10 @@ var _ = Describe("Container pool", func() {
 			It("returns the error and releases the uid and network", func() {
 				Expect(err).To(Equal(nastyError))
 
-				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
-
 				Expect(fakeSubnetPool.ReleaseCallCount()).To(Equal(1))
 				Expect(fakeSubnetPool.ReleaseArgsForCall(0)).To(Equal(containerNetwork))
 			})
 
-			itReleasesTheUserIDs()
 			itReleasesTheIPBlock()
 			itDeletesTheContainerDirectory()
 			itCleansUpTheRootfs()
@@ -1041,7 +996,6 @@ var _ = Describe("Container pool", func() {
 				Expect(err).To(HaveOccurred())
 			})
 
-			itReleasesTheUserIDs()
 			itReleasesTheIPBlock()
 			itCleansUpTheRootfs()
 			itDeletesTheContainerDirectory()
@@ -1123,26 +1077,6 @@ var _ = Describe("Container pool", func() {
 			Expect(linuxContainer.Resources().Bridge).To(Equal("some-bridge"))
 		})
 
-		It("removes its UID from the pool", func() {
-			_, err := pool.Restore(snapshot)
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(fakeUIDPool.Removed).To(ContainElement(uint32(10000)))
-		})
-
-		Context("when the Root UID is 0", func() {
-			BeforeEach(func() {
-				rootUID = 0
-			})
-
-			It("does not remove it from the pool", func() {
-				_, err := pool.Restore(snapshot)
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(fakeUIDPool.Removed).ToNot(ContainElement(rootUID))
-			})
-		})
-
 		It("removes its network from the pool", func() {
 			_, err := pool.Restore(snapshot)
 			Expect(err).ToNot(HaveOccurred())
@@ -1183,10 +1117,6 @@ var _ = Describe("Container pool", func() {
 				Expect(err).To(HaveOccurred())
 			})
 
-			It("returns the UID to the pool", func() {
-				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
-			})
-
 			It("returns the subnet to the pool", func() {
 				Expect(fakeSubnetPool.ReleaseCallCount()).To(Equal(1))
 				Expect(fakeSubnetPool.ReleaseArgsForCall(0)).To(Equal(containerNetwork))
@@ -1204,19 +1134,6 @@ var _ = Describe("Container pool", func() {
 			})
 		})
 
-		Context("when removing the UID from the pool fails", func() {
-			disaster := errors.New("oh no!")
-
-			JustBeforeEach(func() {
-				fakeUIDPool.RemoveError = disaster
-			})
-
-			It("returns the error", func() {
-				_, err := pool.Restore(snapshot)
-				Expect(err).To(Equal(disaster))
-			})
-		})
-
 		Context("when removing the network from the pool fails", func() {
 			disaster := errors.New("oh no!")
 
@@ -1224,11 +1141,9 @@ var _ = Describe("Container pool", func() {
 				fakeSubnetPool.RemoveReturns(disaster)
 			})
 
-			It("returns the error and releases the uid", func() {
+			It("returns the error", func() {
 				_, err := pool.Restore(snapshot)
 				Expect(err).To(Equal(disaster))
-
-				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
 			})
 		})
 
@@ -1239,11 +1154,9 @@ var _ = Describe("Container pool", func() {
 				fakePortPool.RemoveError = disaster
 			})
 
-			It("returns the error and releases the uid, network, and all ports", func() {
+			It("returns the error and releases the network and all ports", func() {
 				_, err := pool.Restore(snapshot)
 				Expect(err).To(Equal(disaster))
-
-				Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
 
 				Expect(fakeSubnetPool.ReleaseCallCount()).To(Equal(1))
 				Expect(fakeSubnetPool.ReleaseArgsForCall(0)).To(Equal(containerNetwork))
@@ -1258,11 +1171,9 @@ var _ = Describe("Container pool", func() {
 					rootUID = 0
 				})
 
-				It("does not release uid 0 back to the uid pool", func() {
+				It("returns the error", func() {
 					_, err := pool.Restore(snapshot)
 					Expect(err).To(Equal(disaster))
-
-					Expect(fakeUIDPool.Released).ToNot(ContainElement(rootUID))
 				})
 			})
 		})
@@ -1503,14 +1414,12 @@ var _ = Describe("Container pool", func() {
 			))
 		})
 
-		It("releases the container's ports, uid, and network", func() {
+		It("releases the container's ports and network", func() {
 			err := pool.Destroy(createdContainer)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakePortPool.Released).To(ContainElement(uint32(123)))
 			Expect(fakePortPool.Released).To(ContainElement(uint32(456)))
-
-			Expect(fakeUIDPool.Released).To(ContainElement(uint32(10000)))
 
 			Expect(fakeSubnetPool.ReleaseCallCount()).To(Equal(1))
 			Expect(fakeSubnetPool.ReleaseArgsForCall(0)).To(Equal(createdContainer.Resources().Network))
@@ -1577,12 +1486,11 @@ var _ = Describe("Container pool", func() {
 					Expect(err).To(Equal(disaster))
 				})
 
-				It("does not release the container's ports or uid", func() {
+				It("does not release the container's ports", func() {
 					pool.Destroy(createdContainer)
 
 					Expect(fakePortPool.Released).ToNot(ContainElement(uint32(123)))
 					Expect(fakePortPool.Released).ToNot(ContainElement(uint32(456)))
-					Expect(fakeUIDPool.Released).ToNot(ContainElement(uint32(10000)))
 				})
 
 				It("does not release the network", func() {
@@ -1625,13 +1533,12 @@ var _ = Describe("Container pool", func() {
 				Expect(fakeRootFSProvider.CleanupRootFSCallCount()).To(Equal(0))
 			})
 
-			It("does not release the container's ports or uid", func() {
+			It("does not release the container's ports", func() {
 				err := pool.Destroy(createdContainer)
 				Expect(err).To(HaveOccurred())
 
 				Expect(fakePortPool.Released).To(BeEmpty())
 				Expect(fakePortPool.Released).To(BeEmpty())
-				Expect(fakeUIDPool.Released).To(BeEmpty())
 			})
 
 			It("does not release the network", func() {
