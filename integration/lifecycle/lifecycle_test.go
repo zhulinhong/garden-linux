@@ -1055,6 +1055,27 @@ var _ = Describe("Creating a container", func() {
 				Expect(iptables).ToNot(gbytes.Say(handle))
 			})
 
+			PIt("should not leak filesystem resources", func() {
+				handle := container.Handle()
+				c2, _ := client.Create(garden.ContainerSpec{})
+
+				rootfsPath := fmt.Sprintf("/tmp/test-garden-%d/overlays/%s", GinkgoParallelNode(), handle)
+				Expect(rootfsPath).To(BeAnExistingFile())
+
+				Expect(client.Destroy(handle)).To(Succeed())
+				container = nil
+
+				for {
+					if err := os.RemoveAll(rootfsPath); err == nil {
+						break
+					}
+				}
+
+				Expect(rootfsPath).NotTo(BeAnExistingFile())
+
+				Expect(client.Destroy(c2.Handle())).To(Succeed())
+			})
+
 			It("should not leak network namespace", func() {
 				info, err := container.Info()
 				Expect(err).ToNot(HaveOccurred())
