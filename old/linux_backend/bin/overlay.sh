@@ -82,21 +82,8 @@ function setup_fs() {
   fi
 }
 
-function try_umount() {
-  local mountpoint=$1
-  if [ ! -z "$mountpoint" ]; then
-    umount -l "$mountpoint" || true
-  fi
-}
-
 function teardown_fs() {
-  export -f try_umount
-  local file=/proc/mounts
-  local mount_points=$(cat $file | grep $container_path | awk '{print $2}')
-
-  for mount_point in $mount_points; do
-    echo "$(echo $mount_point | wc -m) $mount_point"
-  done | sort -n -r | awk '{ print $2 }' | xargs bash -c 'try_umount "$@"' _
+  cat /proc/mounts | grep $container_path | awk '{print $2}' | xargs umount -l
 }
 
 if [ "$action" = "create" ]; then
