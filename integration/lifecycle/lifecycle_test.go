@@ -1055,24 +1055,19 @@ var _ = Describe("Creating a container", func() {
 				Expect(iptables).ToNot(gbytes.Say(handle))
 			})
 
-			PIt("should not leak filesystem resources", func() {
-				handle := container.Handle()
-				c2, _ := client.Create(garden.ContainerSpec{})
+			It("destroys multiple containers based on same rootfs", func() {
+				c1, err := client.Create(garden.ContainerSpec{
+					RootFSPath: "docker:///busybox",
+					Privileged: false,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				c2, err := client.Create(garden.ContainerSpec{
+					RootFSPath: "docker:///busybox",
+					Privileged: false,
+				})
+				Expect(err).ToNot(HaveOccurred())
 
-				rootfsPath := fmt.Sprintf("/tmp/test-garden-%d/overlays/%s", GinkgoParallelNode(), handle)
-				Expect(rootfsPath).To(BeAnExistingFile())
-
-				Expect(client.Destroy(handle)).To(Succeed())
-				container = nil
-
-				for {
-					if err := os.RemoveAll(rootfsPath); err == nil {
-						break
-					}
-				}
-
-				Expect(rootfsPath).NotTo(BeAnExistingFile())
-
+				Expect(client.Destroy(c1.Handle())).To(Succeed())
 				Expect(client.Destroy(c2.Handle())).To(Succeed())
 			})
 
