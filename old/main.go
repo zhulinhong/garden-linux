@@ -37,7 +37,6 @@ import (
 	"github.com/cloudfoundry-incubator/garden-linux/old/rootfs_provider"
 	"github.com/cloudfoundry-incubator/garden-linux/old/sysconfig"
 	"github.com/cloudfoundry-incubator/garden-linux/old/system_info"
-	"github.com/cloudfoundry-incubator/garden-linux/old/uid_pool"
 	"github.com/cloudfoundry-incubator/garden/server"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/command_runner/linux_command_runner"
@@ -234,8 +233,6 @@ func Main() {
 		return
 	}
 
-	uidPool := uid_pool.New(uint32(*uidPoolStart), uint32(*uidPoolSize))
-
 	_, dynamicRange, _ := net.ParseCIDR(*networkPool)
 	subnetPool, _ := subnets.NewSubnets(dynamicRange)
 
@@ -299,6 +296,11 @@ func Main() {
 		"docker": dockerRootFSProvider,
 	}
 
+	rootFSNamespacer := rootfs_provider.NewNamespacer(
+		rootfs_provider.NewUidTranslator(
+			rootfs_provider.DefaultUIDMap,
+			rootfs_provider.DefaultGIDMap).Translate)
+
 	filterProvider := &provider{
 		useKernelLogging: useKernelLogging,
 		chainPrefix:      config.IPTables.Filter.InstancePrefix,
@@ -326,7 +328,7 @@ func Main() {
 		*depotPath,
 		config,
 		rootFSProviders,
-		uidPool,
+		rootFSNamespacer,
 		parsedExternalIP,
 		*mtu,
 		subnetPool,

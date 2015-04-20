@@ -228,6 +228,25 @@ var _ = Describe("Creating a container", func() {
 			})
 
 			It("can write to files in directories owned by user", func() {
+				stdout := gbytes.NewBuffer()
+				process, err := container.Run(garden.ProcessSpec{
+					User: "root",
+					Path: "whoami",
+				}, garden.ProcessIO{
+					Stdout: io.MultiWriter(GinkgoWriter, stdout),
+					Stderr: GinkgoWriter,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = process.Wait()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(stdout).To(gbytes.Say("root"))
+			})
+
+			PIt("can write to files owned by a user that already exists in the rootfs", func() {
+			})
+
+			It("can write to files in directories owned by user", func() {
 				process, err := container.Run(garden.ProcessSpec{
 					User: "root",
 					Path: "touch",
@@ -243,7 +262,7 @@ var _ = Describe("Creating a container", func() {
 				Expect(result).To(Equal(0))
 			})
 
-			FIt("can see files owned by namepsaced users", func() {
+			It("can see files owned by namepsaced users", func() {
 				stdout := gbytes.NewBuffer()
 				process, err := container.Run(garden.ProcessSpec{
 					User: "root",
