@@ -212,6 +212,60 @@ var _ = Describe("Creating a container", func() {
 		})
 
 		Context("Using a docker image", func() {
+			BeforeEach(func() {
+				rootfs = "docker:///busybox"
+				privilegedContainer = false
+			})
+
+			It("can destroy 2 containers sharing the same rootFS", func() {
+				c2, err := client.Create(garden.ContainerSpec{Privileged: privilegedContainer, RootFSPath: rootfs})
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(client.Destroy(container.Handle())).To(Succeed())
+				Expect(client.Destroy(c2.Handle())).To(Succeed())
+
+				container = nil
+			})
+
+			It("can write to files in directories owned by user", func() {
+				process, err := container.Run(garden.ProcessSpec{
+					User: "root",
+					Path: "touch",
+					Args: []string{"/sbin/someNewFile"},
+				}, garden.ProcessIO{
+					Stdout: GinkgoWriter,
+					Stderr: GinkgoWriter,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				result, err := process.Wait()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(0))
+			})
+
+			FIt("can see files owned by namepsaced users", func() {
+				stdout := gbytes.NewBuffer()
+				process, err := container.Run(garden.ProcessSpec{
+					User: "root",
+					Path: "sh",
+					Args: []string{
+						"-c",
+						"ls -l /sbin | grep -v -i wshd | awk '{ print $3 }'",
+					},
+				}, garden.ProcessIO{
+					Stdout: io.MultiWriter(stdout, GinkgoWriter),
+					Stderr: GinkgoWriter,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				result, err := process.Wait()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(0))
+
+				Expect(stdout).To(gbytes.Say("root"))
+				Expect(stdout).ToNot(gbytes.Say("65534"))
+			})
+
 			Context("when there is a VOLUME associated with the docker image", func() {
 				BeforeEach(func() {
 					// dockerfile contains `VOLUME /foo`, see diego-dockerfiles/with-volume
