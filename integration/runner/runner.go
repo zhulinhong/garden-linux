@@ -79,6 +79,7 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	MustMountTmpfs(overlaysPath)
+	MustMountTmpfs(r.graphPath)
 
 	var appendDefaultFlag = func(ar []string, key, value string) []string {
 		for _, a := range r.argv {
