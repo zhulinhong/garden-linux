@@ -225,13 +225,13 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  rv = setgid(pw->pw_uid);
+  rv = setgid(pw->pw_gid);
   if(rv == -1) {
     perror("setgid");
     return 1;
   }
 
-  rv = setuid(pw->pw_gid);
+  rv = setuid(pw->pw_uid);
   if(rv == -1) {
     perror("setuid");
     return 1;
