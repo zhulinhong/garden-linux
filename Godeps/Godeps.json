@@ -99,6 +99,11 @@
 			"Rev": "c8926bb5792ebea6e7b16935fa7fce577446574a"
 		},
 		{
+			"ImportPath": "github.com/docker/docker/pkg/devicemapper",
+			"Comment": "v1.3.0-597-gc8926bb",
+			"Rev": "c8926bb5792ebea6e7b16935fa7fce577446574a"
+		},
+		{
 			"ImportPath": "github.com/docker/docker/pkg/fileutils",
 			"Comment": "v1.3.0-597-gc8926bb",
 			"Rev": "c8926bb5792ebea6e7b16935fa7fce577446574a"
@@ -208,10 +213,6 @@
 			"Rev": "9f61d4554f6af00705c15714f4711f3019da7760"
 		},
 		{
-			"ImportPath": "github.com/gogo/protobuf/proto",
-			"Rev": "d59ce9ecb817e6fbca932115f03520207f5a8a07"
-		},
-		{
 			"ImportPath": "github.com/gorilla/context",
 			"Rev": "14f550f51af52180c2eefed15e5fd18d63c0a64a"
 		},
@@ -249,10 +250,6 @@
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
 			"Rev": "09a71f6eb2dcc1c2335e37ceb78a91c6f618d561"
-		},
-		{
-			"ImportPath": "github.com/pkg/term/termios",
-			"Rev": "e43fe36b3c6c38b682d86badb217aa95d7e86f4b"
 		},
 		{
 			"ImportPath": "github.com/tchap/go-patricia/patricia",

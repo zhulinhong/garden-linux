@@ -26,6 +26,8 @@ export PATH=$GODEPS_WORKSPACE/bin:$PATH
 
 make
 
+apt-get update
+apt-get install -y libdevmapper-dev
 go install github.com/onsi/ginkgo/ginkgo
 
 ginkgo -r -p -race -cover -keepGoing -nodes=4 "$@"
