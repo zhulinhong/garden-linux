@@ -482,14 +482,17 @@ func (p *LinuxContainerPool) acquirePoolResources(spec garden.ContainerSpec, id 
 }
 
 func (p *LinuxContainerPool) acquireUID(resources *linux_backend.Resources, privileged bool) error {
+	//TODO: these should not be hard coded
+	userUID := uint32(101000)
+	offset := uint32(600000)
 	if !privileged {
-		resources.UserUID = 101000 + 600000 //TODO: these should not be hard coded
-		resources.RootUID = 600000
+		resources.UserUID = userUID + offset
+		resources.RootUID = offset
 		return nil
 	}
 
 	resources.RootUID = 0
-	resources.UserUID = 10001
+	resources.UserUID = userUID
 	return nil
 }
 
