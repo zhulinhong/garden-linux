@@ -227,7 +227,7 @@ var _ = Describe("Creating a container", func() {
 				container = nil
 			})
 
-			FIt("can write to files in directories owned by user", func() {
+			It("can write to files in directories owned by user", func() {
 				process, err := container.Run(garden.ProcessSpec{
 					User: "root",
 					Path: "touch",
