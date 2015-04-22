@@ -127,7 +127,8 @@ func (fetcher *DockerRepositoryFetcher) Fetch(
 			"image":    imgID,
 		})
 
-		image, err := fetcher.fetchFromEndpoint(fLog, registry, endpoint, imgID, token)
+		var image *dockerImage
+		image, err = fetcher.fetchFromEndpoint(fLog, registry, endpoint, imgID, token)
 		if err == nil {
 			fLog.Debug("fetched", lager.Data{
 				"endpoint": endpoint,
