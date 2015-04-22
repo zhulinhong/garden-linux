@@ -146,6 +146,7 @@ if ! chroot $rootfs_path id vcap >/dev/null 2>&1; then
   touch $rootfs_path/etc/group
   ns_user_id=$(($user_uid - $root_uid))
   useradd -R $rootfs_path -m -u $ns_user_id -s $shell -U vcap
+  chown $user_uid:$user_uid $rootfs_path/home/vcap
 fi
 
 # workaround aufs limitations by copying /root directory out and back

@@ -211,7 +211,7 @@ var _ = Describe("Creating a container", func() {
 			Eventually(stdout).Should(gbytes.Say(fmt.Sprintf("%s\n", container.Handle())))
 		})
 
-		FContext("Using a docker image", func() {
+		Context("Using a docker image", func() {
 			BeforeEach(func() {
 				rootfs = "docker:///busybox"
 				privilegedContainer = false
