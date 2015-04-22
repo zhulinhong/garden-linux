@@ -214,47 +214,28 @@ var _ = Describe("Creating a container", func() {
 		Context("Using a docker image", func() {
 			BeforeEach(func() {
 				rootfs = "docker:///busybox"
-				privilegedContainer = false
 			})
 
-			It("can destroy 2 containers sharing the same rootFS", func() {
-				c2, err := client.Create(garden.ContainerSpec{Privileged: privilegedContainer, RootFSPath: rootfs})
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(client.Destroy(container.Handle())).To(Succeed())
-				Expect(client.Destroy(c2.Handle())).To(Succeed())
-
-				container = nil
-			})
-
-			It("root can write to files in directories owned by root", func() {
-				process, err := container.Run(garden.ProcessSpec{
-					User: "root",
-					Path: "touch",
-					Args: []string{"/root/someNewFile"},
-				}, garden.ProcessIO{
-					Stdout: GinkgoWriter,
-					Stderr: GinkgoWriter,
-				})
-				Expect(err).ToNot(HaveOccurred())
-
-				result, err := process.Wait()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(result).To(Equal(0))
-			})
-
-			Context("when there are existing users in rootFS /etc/passwd", func() {
-
+			Context("when the container is privileged", func() {
 				BeforeEach(func() {
-					rootfs = "docker:///cloudfoundry/preexisting_users"
-					privilegedContainer = false
+					privilegedContainer = true
 				})
 
-				It("user can write to own home directory", func() {
+				It("can destroy 2 containers sharing the same rootFS", func() {
+					c2, err := client.Create(garden.ContainerSpec{Privileged: privilegedContainer, RootFSPath: rootfs})
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(client.Destroy(container.Handle())).To(Succeed())
+					Expect(client.Destroy(c2.Handle())).To(Succeed())
+
+					container = nil
+				})
+
+				It("root can write to files in directories owned by root", func() {
 					process, err := container.Run(garden.ProcessSpec{
-						User: "alice",
+						User: "root",
 						Path: "touch",
-						Args: []string{"/home/alice/myfile"},
+						Args: []string{"/usr/bin/new_file"},
 					}, garden.ProcessIO{
 						Stdout: GinkgoWriter,
 						Stderr: GinkgoWriter,
@@ -266,60 +247,170 @@ var _ = Describe("Creating a container", func() {
 					Expect(result).To(Equal(0))
 				})
 
-				It("user cannot modify files owned by other users", func() {
-					process, err := container.Run(garden.ProcessSpec{
-						User: "alice",
-						Path: "touch",
-						Args: []string{"/home/bob/myfile"},
-					}, garden.ProcessIO{
-						Stdout: GinkgoWriter,
-						Stderr: GinkgoWriter,
+				Context("when there are existing users in rootFS /etc/passwd", func() {
+
+					BeforeEach(func() {
+						rootfs = "docker:///cloudfoundry/preexisting_users"
 					})
-					Expect(err).ToNot(HaveOccurred())
 
-					result, err := process.Wait()
-					Expect(err).ToNot(HaveOccurred())
-					Expect(result).ToNot(Equal(0))
-				})
+					It("user can write to own home directory", func() {
+						process, err := container.Run(garden.ProcessSpec{
+							User: "alice",
+							Path: "touch",
+							Args: []string{"/home/alice/myfile"},
+						}, garden.ProcessIO{
+							Stdout: GinkgoWriter,
+							Stderr: GinkgoWriter,
+						})
+						Expect(err).ToNot(HaveOccurred())
 
-				It("user cannot modify files owned by root", func() {
-					process, err := container.Run(garden.ProcessSpec{
-						User: "alice",
-						Path: "touch",
-						Args: []string{"/myfile"},
-					}, garden.ProcessIO{
-						Stdout: GinkgoWriter,
-						Stderr: GinkgoWriter,
+						result, err := process.Wait()
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal(0))
 					})
-					Expect(err).ToNot(HaveOccurred())
 
-					result, err := process.Wait()
-					Expect(err).ToNot(HaveOccurred())
-					Expect(result).ToNot(Equal(0))
+					It("user cannot modify files owned by other users", func() {
+						process, err := container.Run(garden.ProcessSpec{
+							User: "alice",
+							Path: "touch",
+							Args: []string{"/home/bob/myfile"},
+						}, garden.ProcessIO{
+							Stdout: GinkgoWriter,
+							Stderr: GinkgoWriter,
+						})
+						Expect(err).ToNot(HaveOccurred())
+
+						result, err := process.Wait()
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).ToNot(Equal(0))
+					})
+
+					It("user cannot modify files owned by root", func() {
+						process, err := container.Run(garden.ProcessSpec{
+							User: "alice",
+							Path: "touch",
+							Args: []string{"/myfile"},
+						}, garden.ProcessIO{
+							Stdout: GinkgoWriter,
+							Stderr: GinkgoWriter,
+						})
+						Expect(err).ToNot(HaveOccurred())
+
+						result, err := process.Wait()
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).ToNot(Equal(0))
+					})
 				})
 			})
 
-			It("can see files owned by namepsaced users", func() {
-				stdout := gbytes.NewBuffer()
-				process, err := container.Run(garden.ProcessSpec{
-					User: "root",
-					Path: "sh",
-					Args: []string{
-						"-c",
-						"ls -l /sbin | grep -v -i wshd | awk '{ print $3 }'",
-					},
-				}, garden.ProcessIO{
-					Stdout: io.MultiWriter(stdout, GinkgoWriter),
-					Stderr: GinkgoWriter,
+			Context("when the container is unprivileged", func() {
+				BeforeEach(func() {
+					privilegedContainer = false
 				})
-				Expect(err).ToNot(HaveOccurred())
 
-				result, err := process.Wait()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(result).To(Equal(0))
+				It("can destroy 2 containers sharing the same rootFS", func() {
+					c2, err := client.Create(garden.ContainerSpec{Privileged: privilegedContainer, RootFSPath: rootfs})
+					Expect(err).ToNot(HaveOccurred())
 
-				Expect(stdout).To(gbytes.Say("root"))
-				Expect(stdout).ToNot(gbytes.Say("65534"))
+					Expect(client.Destroy(container.Handle())).To(Succeed())
+					Expect(client.Destroy(c2.Handle())).To(Succeed())
+
+					container = nil
+				})
+
+				It("root can write to files in directories owned by root", func() {
+					process, err := container.Run(garden.ProcessSpec{
+						User: "root",
+						Path: "touch",
+						Args: []string{"/root/someNewFile"},
+					}, garden.ProcessIO{
+						Stdout: GinkgoWriter,
+						Stderr: GinkgoWriter,
+					})
+					Expect(err).ToNot(HaveOccurred())
+
+					result, err := process.Wait()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result).To(Equal(0))
+				})
+
+				Context("when there are existing users in rootFS /etc/passwd", func() {
+
+					BeforeEach(func() {
+						rootfs = "docker:///cloudfoundry/preexisting_users"
+					})
+
+					It("user can write to own home directory", func() {
+						process, err := container.Run(garden.ProcessSpec{
+							User: "alice",
+							Path: "touch",
+							Args: []string{"/home/alice/myfile"},
+						}, garden.ProcessIO{
+							Stdout: GinkgoWriter,
+							Stderr: GinkgoWriter,
+						})
+						Expect(err).ToNot(HaveOccurred())
+
+						result, err := process.Wait()
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal(0))
+					})
+
+					It("user cannot modify files owned by other users", func() {
+						process, err := container.Run(garden.ProcessSpec{
+							User: "alice",
+							Path: "touch",
+							Args: []string{"/home/bob/myfile"},
+						}, garden.ProcessIO{
+							Stdout: GinkgoWriter,
+							Stderr: GinkgoWriter,
+						})
+						Expect(err).ToNot(HaveOccurred())
+
+						result, err := process.Wait()
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).ToNot(Equal(0))
+					})
+
+					It("user cannot modify files owned by root", func() {
+						process, err := container.Run(garden.ProcessSpec{
+							User: "alice",
+							Path: "touch",
+							Args: []string{"/myfile"},
+						}, garden.ProcessIO{
+							Stdout: GinkgoWriter,
+							Stderr: GinkgoWriter,
+						})
+						Expect(err).ToNot(HaveOccurred())
+
+						result, err := process.Wait()
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).ToNot(Equal(0))
+					})
+				})
+
+				It("can see files owned by namespaced users", func() {
+					stdout := gbytes.NewBuffer()
+					process, err := container.Run(garden.ProcessSpec{
+						User: "root",
+						Path: "sh",
+						Args: []string{
+							"-c",
+							"ls -l /sbin | grep -v -i wshd | awk '{ print $3 }'",
+						},
+					}, garden.ProcessIO{
+						Stdout: io.MultiWriter(stdout, GinkgoWriter),
+						Stderr: GinkgoWriter,
+					})
+					Expect(err).ToNot(HaveOccurred())
+
+					result, err := process.Wait()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result).To(Equal(0))
+
+					Expect(stdout).To(gbytes.Say("root"))
+					Expect(stdout).ToNot(gbytes.Say("65534"))
+				})
 			})
 
 			Context("when there is a VOLUME associated with the docker image", func() {

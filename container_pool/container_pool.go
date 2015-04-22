@@ -244,7 +244,7 @@ func (p *LinuxContainerPool) Create(spec garden.ContainerSpec) (c linux_backend.
 
 	handle := getHandle(spec.Handle, id)
 
-	rootFSEnv, err := p.acquireSystemResources(id, handle, containerPath, spec.RootFSPath, resources, spec.BindMounts, pLog)
+	rootFSEnv, err := p.acquireSystemResources(id, handle, containerPath, spec.RootFSPath, resources, spec.Privileged, spec.BindMounts, pLog)
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +506,7 @@ func (p *LinuxContainerPool) releasePoolResources(resources *linux_backend.Resou
 	}
 }
 
-func (p *LinuxContainerPool) acquireSystemResources(id, handle, containerPath, rootFSPath string, resources *linux_backend.Resources, bindMounts []garden.BindMount, pLog lager.Logger) (process.Env, error) {
+func (p *LinuxContainerPool) acquireSystemResources(id, handle, containerPath, rootFSPath string, resources *linux_backend.Resources, privileged bool, bindMounts []garden.BindMount, pLog lager.Logger) (process.Env, error) {
 	if err := os.MkdirAll(containerPath, 0755); err != nil {
 		return nil, fmt.Errorf("containerpool: creating container directory: %v", err)
 	}
@@ -533,7 +533,9 @@ func (p *LinuxContainerPool) acquireSystemResources(id, handle, containerPath, r
 		return nil, err
 	}
 
-	p.rootfsNamespacer.Namespace(rootfsPath)
+	if !privileged {
+		p.rootfsNamespacer.Namespace(rootfsPath)
+	}
 
 	if resources.Bridge, err = p.bridges.Reserve(resources.Network.Subnet, id); err != nil {
 		pLog.Error("reserve-bridge-failed", err, lager.Data{

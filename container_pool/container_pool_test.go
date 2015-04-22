@@ -353,6 +353,12 @@ var _ = Describe("Container pool", func() {
 					))
 				}
 			})
+
+			It("translates uids in the rootfs", func() {
+				_, err := pool.Create(garden.ContainerSpec{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(fakeRootFSNamespacer.NamespaceCallCount()).To(Equal(1))
+			})
 		})
 
 		Context("when the privileged flag is specified and true", func() {
@@ -382,11 +388,10 @@ var _ = Describe("Container pool", func() {
 				))
 			})
 
-			It("translates uids in the rootfs", func() {
+			It("does not translate uids in the rootfs", func() {
 				_, err := pool.Create(garden.ContainerSpec{Privileged: true})
 				Expect(err).ToNot(HaveOccurred())
-
-				Expect(fakeRootFSNamespacer.NamespaceCallCount()).To(Equal(1))
+				Expect(fakeRootFSNamespacer.NamespaceCallCount()).To(Equal(0))
 			})
 		})
 
