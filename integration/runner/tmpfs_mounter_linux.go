@@ -12,6 +12,11 @@ func MustMountTmpfs(destination string) {
 	}
 }
 
+func MustUnmountTmpfs(destination string) {
+	must(syscall.Unmount(destination, 0))
+	must(os.Remove(destination))
+}
+
 func must(err error) {
 	if err != nil {
 		panic(err)
